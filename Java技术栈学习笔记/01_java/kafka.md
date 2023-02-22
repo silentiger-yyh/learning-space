@@ -410,12 +410,38 @@ partition 中的每条 Message 包含了以下三个属性： offset， MessageS
 
 ## 3. 和其他消息队列相比,Kafka的优势在哪里？
 
-1. 高吞吐量：Kafka 能够处理数以千计的消息并发读写，具有很高的吞吐量。
+1. 高吞吐量：Kafka 能够处理数以千计的消息并发读写，具有很高的吞吐量（Kafka 在单位时间内处理的消息数量，在 Kafka 中，吞吐量是衡量 Kafka 性能的重要指标之一）。
 2. 高可靠性：Kafka 采用分布式架构，每个节点都有备份机制，一旦某个节点宕机，数据不会丢失。
 3. 高扩展性：Kafka 可以通过水平扩展（增加节点）来增加吞吐量和存储能力，支持横向扩展和纵向扩展。
 4. 高灵活性：Kafka 可以根据不同的需求进行配置，支持多种数据格式和编解码方式。
 5. 实时处理能力：Kafka 具有实时数据处理能力，可以处理实时数据和流数据，支持多种处理方式和工具。
 6. 高性能和低延迟：Kafka 使用零拷贝技术和批量读写等优化手段，能够实现低延迟和高性能的数据处理。
+
+   > **高性能的原因：**
+   >
+   > 1. 利用了 PageCache 缓存：
+   >
+   > 2. **磁盘顺序写（重点）**：
+   >
+   >    磁盘是由许多磁盘盘片叠在一起形成的，每个盘片都有两面，每一面上都有磁道，磁道被划分为若干个扇区。磁头需要在不同的盘片之间移动，定位到正确的磁道上，读取相应的扇区。这个过程需要耗费较长的时间，从而导致磁盘随机访问速度比顺序访问速度慢。
+   >
+   >    而Kafka是在文件末尾追加写的方式（顺序写）来保证其写入数据的高性能。
+   >
+   > 3. **零拷贝技术（重点）**
+   >
+   >    **没有使用零拷贝时的读写过程**
+   >
+   >    ![image-20230221151411543](images/image-20230221151411543.png)
+   >
+   >    **使用零拷贝的读写过程**
+   >
+   >    ![image-20230221151524890](images/image-20230221151524890.png)
+   >
+   >    DMA直接内存访问
+   >
+   > 4. pull 拉模式
+   >
+   >    采用 Pull 模式的好处是Consumer可以自主决定是否批量的从Broker拉取数据。
 
 ## 4. 队列模型了解吗？Kafka 的消息模型知道吗？
 
@@ -458,7 +484,7 @@ partition 中的每条 Message 包含了以下三个属性： offset， MessageS
 - **Topic（主题）** : Producer 将消息发送到特定的主题，Consumer 通过订阅特定的 Topic(主题) 来消费消息。
 - **Partition（分区）** : Partition 属于 Topic 的一部分。一个 Topic 可以有多个 Partition ，并且同一 Topic 下的 Partition 可以分布在不同的 Broker 上，这也就表明一个 Topic 可以横跨多个 Broker 。这正如我上面所画的图一样。
 
-> 划重点：**Kafka 中的 Partition（分区） 实际上可以对应成为消息队列中的队列。这样是不是更好理解一点？**
+> 划重点：**Kafka 中的 Partition（分区） 实际上可以对应成为消息队列中的队列，每个partition是一个有序的队列。这样是不是更好理解一点？**
 
 ## 6. Kafka 的多副本机制了解吗？带来了什么好处？
 
@@ -475,11 +501,21 @@ Kafka 将每个 Partition 的数据分为多个副本，其中一个为 Leader �
 
 ## 7. Zookeeper 在 Kafka 中的作用知道吗？
 
-1. 维护集群元数据：Kafka 集群中的 Broker、Topic、Partition 等元数据信息都是存储在 ZooKeeper 中，ZooKeeper 提供了对这些元数据的统一管理和维护。
-2. 负责领导者选举：Kafka 集群中的每个 Partition 都会有一个 Leader 和多个 Follower，ZooKeeper 会协助进行领导者选举，确保每个 Partition 都有 Leader 以及 Follower 的同步数据。
-3. 监听 Broker 上下线：Kafka 集群中的 Broker 可能会因为各种原因宕机或者上线，ZooKeeper 会监测这些状态变化，并及时更新 Broker 的信息。
+1. 维护集群元数据：Kafka 集群中的 Broker（Broker注册）、Topic（Topic注册）、Partition 等元数据信息都是存储在 ZooKeeper 中，ZooKeeper 提供了对这些元数据的统一管理和维护。
+
+2. 监听 Broker 上下线：Kafka 集群中的 Broker 可能会因为各种原因宕机或者上线，ZooKeeper 会监测这些状态变化，并及时更新 Broker 的信息。
+
+   > **更好的说法**：
+   >
+   > 管理Broker状态：Kafka中的Broker会将自己的状态（存活或故障）注册到Zookeeper中，Kafka通过Zookeeper来感知Broker的状态变化。
+
+3. Topic注册：在Kafka中，同一个**Topic的消息会被分成多个分区**并将其分布在多个Broker上，**这些分区信息及与Broker的对应关系**也都是由Zookeeper在维护，由专门的节点来记录
+
 4. 保存消费者 Offset：Kafka 消费者消费消息时，需要记录当前消费的位置，ZooKeeper 提供了一个稳定的存储方式来保存消费者 Offset，确保在消费者宕机后能够恢复消费状态。
-5. **负载均衡** ：上面也说过了 Kafka 通过给特定 Topic 指定多个 Partition, 而各个 Partition 可以分布在不同的 Broker 上, 这样便能提供比较好的并发能力。 对于同一个 Topic 的不同 Partition，Kafka 会尽力将这些 Partition 分布到不同的 Broker 服务器上。当生产者产生消息后也会尽量投递到不同 Broker 的 Partition 里面。当 Consumer 消费的时候，Zookeeper 可以根据当前的 Partition 数量以及 Consumer 数量来实现动态负载均衡。
+
+5. 生产者负载均衡：同一个Topic消息会被分区并将其分布在多个Broker上。由于每个Broker启动时，都会在Zookeeper上进行注册，生产者会通过该节点的变化来动态地感知到Broker服务器列表的变更，这样就可以实现动态的负载均衡。
+
+6. 消费者注册：当一个Consumer启动时，它首先会向Zookeeper注册自己，并创建一个消费者节点。节点的信息包括订阅的Partition信息、最后一次心跳时间等。
 
 ## 8. Kafka 如何保证消息的消费顺序？
 
@@ -600,3 +636,385 @@ acks 的默认值即为1，代表我们的消息被leader副本接收之后就�
 ## 11. 负载均衡
 
 由于消息 topic 由多个 partition 组成， 且 partition 会均衡分布到不同 broker 上，因此，为了有效利用 broker 集群的性能，提高消息的吞吐量， producer 可以通过随机或者 hash 等方式，将消息平均发送到多个 partition 上，以实现负载均衡。
+
+## 12. Kafka的设计
+
+Kafka 将消息以 topic 为单位进行归纳，发布消息的程序称为 **Producer**，消费消息的程序称为 **Consumer**。它是以集群的方式运行，可以由一个或多个服务组成，每个服务叫做一个 **Broker**，Producer 通过网络将消息发送到 kafka 集群，集群向消费者提供消息，broker 在中间起到一个代理保存消息的中转站。
+
+**Kafka 中重要的组件**
+
+*1）Producer*：消息生产者，发布消息到Kafka集群的终端或服务
+
+*2）Broker*：一个 Kafka 节点就是一个 Broker，多个Broker可组成一个Kafka 集群。
+
+> 如果某个 Topic 下有 n 个Partition 且集群有 n 个Broker，那么每个 Broker会存储该 Topic 下的一个 Partition
+>
+> 如果某个 Topic 下有 n 个Partition 且集群中有 m+n 个Broker，那么只有 n 个Broker会存储该Topic下的一个 Partition
+>
+> 如果某个 Topic 下有 n 个Partition 且集群中的Broker数量小于 n，那么一个 Broker 会存储该 Topic 下的一个或多个 Partition，这种情况尽量避免，会导致集群数据不均衡
+
+*3）Topic*：消息主题，每条发布到Kafka集群的消息都会归集于此，Kafka是面向Topic 的
+
+*4）Partition*：Partition 是Topic在物理上的分区，一个Topic可以分为多个Partition，每个Partition是一个有序的不可变的记录序列。单一主题中的分区有序，但无法保证主题中所有分区的消息有序。
+
+*5）Consumer*：从Kafka集群中消费消息的终端或服务
+
+*6）Consumer Group*：每个Consumer都属于一个Consumer Group，每条消息只能被Consumer Group中的一个Consumer消费，但可以被多个Consumer Group消费。
+
+*7）Replica*：Partition 的副本，用来保障Partition的高可用性。
+
+*8）Controller：* Kafka 集群中的其中一个服务器，用来进行Leader election以及各种 Failover 操作。
+
+*9）Zookeeper*：Kafka 通过Zookeeper来存储集群中的 meta 消息
+
+## 13、Kafka 文件高效存储设计原理
+
+Kafka 通过分段存储和索引机制来实现高效的数据存储和读写。
+
+1. 分段存储：Kafka 将每个分区（Partition）的消息以时间顺序分成多个段（Segment）进行存储，每个段的大小默认为 1GB，可以通过配置进行调整。每个段的消息以追加的方式存储在磁盘上，避免了磁盘的随机访问，提高了数据写入的效率。
+2. 索引机制：为了快速定位消息，Kafka 使用了两级索引机制。**第一级索引**由一组定长的索引文件组成，**每个索引文件对应一个段文件**，**记录该段文件中消息的起始位置和偏移量**。**第二级索引**由一个定长的“偏移量索引文件”（Offset Index File）和一个变长的“偏移量索引快照文件”（Offset Index Snapshot File）组成，**记录每个段文件的最后一个消息的偏移量和时间戳**。
+
+当消费者需要获 取某个分区的消息时，**先从第二级索引中找到该消息所在的段文件，然后在该段文件的索引文件中查找该消息的偏移量和位置**，最后从磁盘中读取该消息。这种索引机制能够快速定位消息，避免了对整个消息存储文件的扫描，提高了数据读取的效率。
+
+## 14. Kafka 的应用场景
+
+### 14.0 消息系统
+
+广泛用于消息中间件
+
+### 14.1 缓冲/削峰
+
+有助于控制和优化数据流经过系统的速度，解决生产消息和消费消息的处理速度不一致的情况。
+
+![image-20230220095434472](images/image-20230220095434472.png)
+
+#### 14.2 系统解耦
+
+允许你独立的扩展或修改两边的处理过程，只要确保它们遵守同样的接口约束。
+
+![image-20230220095653413](images/image-20230220095653413.png)
+
+### 14.3 异步处理
+
+通过异步处理机制，可以把一个消息放入队列中，但不立即处理它，在需要的时候再进行处理
+
+![image-20230220095843041](images/image-20230220095843041.png)
+
+### 14.4 日志聚合 / 日志同步
+
+可收集各种服务的日志写入kafka的消息队列进行存储
+
+在大型业务系统设计中，为了快速定位问题，全链路追踪日志，以及故障及时预警监控，通常需要将各系统应用的日志集中分析处理。
+
+Kafka设计初衷就是为了应对大量日志传输场景，应用通过异步方式将日志消息同步到消息服务，再通过其他组件对日志做实时或离线分析，也可用于关键日志信息收集进行应用监控。
+
+日志同步主要有三个关键部分：日志采集客户端，Kafka消息队列以及后端的日志处理应用。
+
+1. 日志采集客户端，负责用户各类应用服务的日志数据采集，以消息方式将日志“批量”、“异步”发送Kafka客户端。
+
+   Kafka客户端批量提交和压缩消息，对应用服务的性能影响非常小。
+
+2. Kafka将日志存储在消息文件中，提供持久化。
+
+3. 日志处理应用，如Logstash，订阅并消费Kafka中的日志消息，最终供文件搜索服务检索日志，或者由Kafka将消息传递给Hadoop等其他大数据应用系统化存储与分析。
+
+<img src="images/zh-cn_image_0169396006.png" alt="img" style="zoom:150%;" />
+
+## 15. 分区（Partition）的概念
+
+主题是一个逻辑上的概念，还可以细分为多个分区，一个分区只属于单个主题，很多时候也会把分区称为主题分区（Topic-Partition）。同一主题下的不同分区包含的消息是不同的，**分区在存储层面可以看做一个可追加的`日志文件` ，消息在被追加到分区日志文件的时候都会分配一个特定的偏移量（offset）**。**offset 是消息在分区中的唯一标识，kafka 通过它来保证消息在分区内的顺序性，**不过 offset 并不跨越分区，也就是说，kafka保证的是分区有序而不是主题有序。
+
+在分区中又引入了**多副本（replica）**的概念，通过增加副本数量可以提高容灾能力。同一分区的不同副本中保存的是相同的消息。副本之间是一主多从的关系，其中主（Leader）副本负责读写，从（Follower）副本只负责消息同步。副本处于不同的 broker 中，当主副本出现异常，便会在从副本中提升一个为主副本。
+
+## 16. 分区原则
+
+总的来讲，Kafka生产消息的分区规则是：
+
+- 如果指定了partition，则直接使用；
+- 如果没有指定partition但设置了key，则对key进行hash后对分区数取模，确定一个partition；
+- 如果没指定partition又没设置key，则轮询出一个partition。
+
+## 17. Kafka 为什么要把消息分区
+
+1. **方便在集群中扩展**，每个 Partition 可用通过调整以适应它所在的机器，而一个Topic又可以有多个Partition组成，因此整个集群就可以适应任意大小的数据了
+2. **可以提高并发**，因为可以以Partition为单位进行读写
+
+## 18. Kafka 中生产者运行流程
+
+在消息发送的过程中，涉及到了两个线程——main 线程和 Sender 线程。在 main 线程 中创建了一个双端队列 RecordAccumulator。main 线程将消息发送给 RecordAccumulator， Sender 线程不断从 RecordAccumulator 中拉取消息发送到 Kafka Broker。
+
+![image-20230220102721657](images/image-20230220102721657.png)
+
+## 19. Kafka 消息的消费模式
+
+> Kafka采用大部分消息系统遵循的传统模式：Producer将消息推送到Broker，Consumer从Broker获取消息。
+
+如果采用 **Push** 模式，则Consumer难以处理不同速率的上游推送消息。
+
+采用 Pull 模式的好处是Consumer可以自主决定是否批量的从Broker拉取数据。Pull模式有个缺点是，如果Broker没有可供消费的消息，将导致Consumer不断在循环中轮询，直到新消息到达。为了避免这点，Kafka有个参数可以让Consumer阻塞直到新消息到达。
+
+>参数叫做`fetch.max.wait.ms`，它表示Consumer在拉取消息时的最大等待时间。如果设置为0，表示立即返回当前可用的消息，如果设置为正数，则表示最多等待这么多毫秒。当该值大于0时，Consumer可能需要等待一段时间直到有新的消息到达。当等待时间达到设定的上限时，Consumer将立即返回已经拉取到的消息。
+
+## 20. Kafka 如何实现负载均衡与故障转移
+
+**负载均衡**
+
+一个Topic可以有多个分区，一个分区对应着一个Leader副本和多个Follower副本，而直接参与读写的就是Leader副本。Kafka负载均衡就是集群中每个Broker都有平等的机会为客户端（生产者和消费者）提供服务，它是通过智能化算法将Leader副本均匀的分配到各个Broker上来实现整体上的负载均衡。如果某个Broker上的Leader挂了，则其中一个Follower副本会顶上来替代Leader的角色。比如说生产者负载均衡。。。。。再比如说消费者负载均衡。。。。。
+
+**故障转移**
+
+ZooKeeper 通过“会话机制”实现了故障转移的功能。
+
+在 Kafka 集群启动时，有一个Broker会通过竞争成为Controller 节点，其他 Broker 会在 ZooKeeper 上监听该节点。当 Controller 失效时，会话超时机制会通知其他 Broker 竞争该节点，竞争成功的 Broker 将成为新的 Controller，负责管理整个 Kafka 集群的状态。通过这种方式，Kafka 实现了故障转移，确保了整个集群的可用性。
+
+## 21. Kafka 中消费者与消费者组的关系与负载均衡实现
+
+Consumer Group 是Kafka独有的**可扩展且具有容错性**的消费者机制。一个组内可以有多个Consumer，它们共享一个全局唯一的Group ID。组内的所有Consumer协调在一起来消费订阅主题（Topic）内的所有分区（Partition）。当然，每个Partition只能由同一个Consumer Group内的一个Consumer 来消费。消费者的数量通常不超过分区的数量，且二者最好保持整数倍的关系，这样不会造成有空闲的消费者。
+
+>- 若consumer数量大于partition数量，会造成限制的consumer，产生浪费。
+>- 若consumer数量小于partition数量，可能会导致均衡失效，其中的某个或某些consumer会消费更多的任务。
+>
+>Consumer 订阅的是Topic的Partition，而不是Message。所以在同一时间点上，订阅到同一个分区的Consumer必然属于不同的Consumer Group
+
+Consumer Group与Consumer的关系是动态维护的，当一个Consumer进程挂掉或者是卡住时，该Consumer所订阅的Partition会被重新分配到该组内的其他Consumer上，当一个Consumer加入到一个Consumer Group中时，同样会从其他的Consumer中分配出一个或者多个Partition到这个新加入的Consumer。
+
+**负载均衡**
+
+为了维持Consumer与Consumer Group之间的关系，Consumer 会周期性地发送 hearbeat 到 coordinator（协调者），如果有 hearbeat 超时或未收到 hearbeat，coordinator 会认为该Consumer已经退出，那么它所订阅的Partition会分配到同一组内的其他Consumer上，这个过程称为 rebalance（再平衡）
+
+>在 Kafka 中，coodinator是指协调消费者组中消费者之间的协作。它是一个专门用于管理消费者组的 Kafka Broker 节点，为消费者组提供协调服务，包括负载均衡、监控消费者健康状况、检测消费者宕机并重新分配分区等功能。每个消费者组都有一个独立的 coodinator，该 coodinator 只能管理该消费者组的消费者，不会干扰其他消费者组的协调工作。同时，一个 Kafka Broker 节点可以同时充当多个消费者组的 coodinator。
+
+## 22. 生产过程中何时会发生QueueFullExpection以及如何处理
+
+在Kafka中，QueueFullException是指当生产者尝试向已满的Kafka队列写入消息时，抛出的异常。这通常是由于生产者生产速度过快，而消费者消费速度过慢，导致Kafka队列的大小已经达到了最大限制。
+
+解决方法：
+
+1. 调整生产者生产速度：可以通过调整生产者的生产速度，使其与消费者的消费速度保持相同的水平，避免队列拥堵。
+2. 暂停生产者：当发现队列已经快要满了时，可以暂停生产者一段时间，等待消费者消费一部分消息之后再继续生产。
+3. 调整队列大小：可以通过修改Kafka的配置文件，调整队列的大小，使其能够容纳更多的消息。
+4. 增加分区数：可以通过增加Kafka分区的数量，让消息分散到更多的分区中，从而缓解队列拥堵的问题。
+
+## 23. Consumer 如何消费指定分区消息
+
+Cosumer 消费消息时，向Broker 发出 `fetch` 请求去消费特定分区的消息，Consumer 可以通过指定消息在日志中的偏移量 offset，就可以从这个位置开始消息消息，Consumer 拥有了 offset 的控制权，也可以向后回滚去重新消费之前的消息。
+
+也可以使用 `seek(Long topicPartition)` 来指定消费的位置。
+
+## 24. Replica、Leader 和 Follower 三者的概念
+
+Replica：Kafka 中的 Partition 是有序消息日志，为了实现高可用性，需要采用备份机制，将相同的数据复制到多个Broker上，而这些备份日志就是 Replica，目的是为了 **防止数据丢失**。所有Partition 的副本默认情况下都会均匀地分布到所有 Broker 上,一旦领导者副本所在的Broker宕机，Kafka 会从追随者副本中选举出新的领导者继续提供服务。
+
+**Leader：** 副本中的领导者。负责对外提供服务，与客户端进行交互。生产者总是向 Leader副本些消息，消费者总是从 Leader 读消息
+
+**Follower：** 副本中的追随者。被动地追随 Leader，不能与外界进行交付。只是向Leader发送消息，请求Leader把最新生产的消息发给它，进而保持同步。
+
+## 25. Kafka 中 AR、ISR、OSR 三者的概念
+
+- AR（Assigned Replicas）：分区中所有副本称为 AR
+- ISR（In-Sync Replicas）：所有与主副本保持一定程度同步的副本（包括主副本）称为 ISR
+- OSR（Out-of-Sync Replicas）：与主副本滞后过多的副本组成 OSR
+
+## 26. 分区副本什么情况下会从 ISR 中剔出
+
+每个Partition都会有一个ISR列表，而且是由Leader动态维护。所谓动态维护，就是说如果一个Follower比一个Leader落后太多，或者超过一定时间未发起数据复制请求，则Leader将其从ISR中移除。当ISR中所有Replica都向Leader发送ACK（Acknowledgement确认）时，Leader才commit。
+
+## 27. 分区副本中的 Leader 如果宕机但 ISR 却为空该如何处理
+
+可以通过配置`unclean.leader.election` ：
+
+- **true**：允许 OSR 成为 Leader，但是 OSR 的消息较为滞后，可能会出现消息不一致的问题
+- **false**：会一直等待旧 leader 恢复正常，降低了可用性
+
+## 28. 如何判断一个 Broker 是否还有效
+
+1. 心跳机制：Kafka 使用心跳机制来检测 Broker 是否还存活，每个 Broker 定期向 ZooKeeper 发送心跳信息，如果在一定时间内没有收到 Broker 的心跳，则认为该 Broker 宕机，其他 Broker 会重新选举出一个新的 Controller，并将旧的 Broker 上的 Partition 重新分配到其他 Broker 上。
+2. 连接超时机制：Kafka 还使用了连接超时机制来检测 Broker 是否还存活。如果 Producer 或 Consumer 无法连接到 Broker 或者与 Broker 的连接在一定时间内没有收到消息，则认为该 Broker 宕机。
+3. 自动故障转移机制：当某个 Broker 宕机时，Kafka 会自动进行故障转移，将宕机 Broker 上的 Partition 分配到其他存活的 Broker 上。
+
+## 29. Kafka 可接收的消息最大默认多少字节，如何修改
+
+Kafka 默认接收消息的最大字节数为1MB（1048576字节），可以通过修改`server.properties`配置文件中的`message.max.bytes`属性来进行修改，例如：
+
+```
+message.max.bytes=2097152
+```
+
+这将把消息最大字节数增加到2MB。需要注意的是，如果要修改这个属性，还需要相应地将相关的客户端（比如Consumer）配置中的`fetch.Message.max.bytess`也进行修改，否则会因为消息过大而被拒绝。
+
+## 30. Kafka 的 ACK 机制
+
+- **0：** 相当于异步操作，Producer 不需要Leader给予回复，发送完就认为成功，继续发送下一条（批）Message。**此机制具有最低延迟，但是持久性可靠性也最差，当服务器发生故障时，很可能发生数据丢失。**
+- **1：** Kafka 默认的设置。表示 Producer 要 Leader 确认已成功接收数据才发送下一条（批）Message。不过 Leader 宕机，Follower 尚未复制的情况下，数据就会丢失。**此机制提供了较好的持久性和较低的延迟性。**
+- **-1（all）：** Leader 接收到消息之后，还必须要求ISR列表里跟Leader保持同步的那些Follower都确认消息已同步，Producer 才发送下一条（批）Message。**此机制持久性可靠性最好，但延时性最差。**
+
+## 31. Kafka 的 consumer 如何消费数据
+
+在Kafka中，Producers将消息推送给Broker端，在Consumer和Broker建立连接之后，会主动去 Pull（或者说Fetch）消息。这种模式有些优点：
+
+- 首先Consumer端可以根据自己的消费能力适时的去fetch消息并处理，且可以控制消息消费的进度（offset）；
+- 此外，消费者可以控制每次消费的数，实现批量消费。
+
+## 32. Kafka 提供的API有哪些
+
+1. 生产者 API：提供了生产者发送消息到 Kafka 集群的方法，包括同步发送、异步发送、自定义分区等。
+2. 消费者 API：提供了消费者从 Kafka 集群中消费消息的方法，包括手动提交偏移量、自动提交偏移量、再均衡（Rebalance）等。
+3. 管理员 API：提供了对 Kafka 集群进行管理的方法，包括创建 Topic、删除 Topic、查看 Topic 等。
+4. 流处理 API：提供了流处理的功能，包括对实时数据进行处理、转换、聚合等。
+5. 连接器 API：提供了与其他数据存储系统（如数据库、消息队列等）进行连接的方法，包括对外部系统进行读取和写入等。
+
+## 33. Kafka日志目录存储结构
+
+```sh
+kafka-logs/
+  topic1-0/
+    00000000000000000000.index
+    00000000000000000000.log
+    00000000000000000000.timeindex
+    00000000000000000020.index
+    00000000000000000020.log
+    00000000000000000020.timeindex
+    00000000000000000032.index
+    00000000000000000032.log
+    00000000000000000032.timeindex
+    ...
+  topic1-1/
+    00000000000000000000.index
+    00000000000000000000.log
+    00000000000000000000.timeindex
+    00000000000000000020.index
+    00000000000000000020.log
+    00000000000000000020.timeindex
+    00000000000000000032.index
+    00000000000000000032.log
+    00000000000000000032.timeindex
+    ...
+```
+
+假设Kafka日志配置目录为`/kafka-logs`，该目录下为topic+partition，也就是说每个topic的分区都有一个独立的文件夹，例如topic1-0即是topic为topic1下的0号分区。
+
+每个分区文件夹下都有三种后缀的文件，每种文件数量相等。
+
+- “ ***.log ” 文件**：Kafka把一个分区的数据分为多个文件存储，每个log文件代表一个段（Segment），每个段最大容量默认为1G，段与段之间是连续的，段文件名为上一个段文件中最后一条消息的偏移量，例如`00000000000000000020.log`，代表上一个段最后一条消息偏移量为20，则本段第一条消息的偏移量为21（20+1）。
+
+> log 文件存储的是实际的消息数据，其格式是二进制的：offset|message_size|message，其中，`offset` 表示消息在分区中的偏移量，`message_size` 表示消息的大小，`message` 表示实际的消息内容。
+>
+> ```sh
+> 00000000|00000026|{"id": 1, "name": "Alice"}
+> 00000026|00000026|{"id": 2, "name": "Bob"}
+> 00000052|0000002A|{"id": 3, "name": "Charlie"}
+> ```
+>
+> 其中，每行的前 8 个字符表示消息在分区中的偏移量，中间的 8 个字符表示消息的大小，最后的部分就是实际的消息内容。
+
+- “ ***.index” 文件**：索引文件，每个log文件对应一个index文件，index文件中由两列组成，offset和position
+
+  - position是相对于文件起始的地址，position为10，则在磁盘中的物理地址为这个文件的**起始物理地址+position**，
+  - offset是对应的消息在log文件中的偏移量
+
+  Kafka并不会为每个Record都保存一个索引，而是根据log.index.interval.bytes等配置构建稀疏的索引信息，读取数据时是根据offset定位到position读取BatchRecord，然后再从BatchRecord中读取某一条消息。
+
+  ![image-20230222162747184](images/image-20230222162747184.png)
+
+- “ ***.timeindex**” 文件：除了index索引文件保存Offset和Position的映射关系外，Kafka中还维护了timeindex，保存了Timestamp和Offset的关系，用于应对一些场景需要根据timestamp来定位消息。timeindex中的一个（timestampX，offsetY）元素的含义是所有创建时间大于timestampX的消息的Offset都大于offsetY。
+
+  ![image-20230222163114526](images/image-20230222163114526.png)
+
+  同样的，timeindex也采用了稀疏索引的机制，使用和index相同的配置（log.index.interval.bytes），所以timeindex和index是一一对应的。
+
+## 34. Kafka 创建Topic后如何将分区放置到不同的 Broker 中
+
+Kafka创建Topic将分区放置到不同的Broker时遵循以下规则：
+
+1. 副本因子不能大于Broker的个数。
+2. 第一个分区（编号为0）的第一个副本放置位置是随机从Broker List中选择的。
+3. 其他分区的第一个副本放置位置相对于第0个分区依次往后移。也就是如果有3个Broker，3个分区，假设第一个分区放在第二个Broker上，那么第二个分区将会放在第三个Broker上；第三个分区将会放在第一个Broker上，更多Broker与更多分区依此类推。剩余的副本相对于第一个副本放置位置其实是由`nextReplicaShift`决定的，而这个数也是随机产生的。
+
+## 35. Kafka 的日志保留期与数据清理策略
+
+**概念**
+
+保留期内保留了Kafka群集中的所有已发布消息，超过保期的数据将被按清理策略进行清理。默认保留时间是7天，如果想修改时间，在`server.properties`里更改参数`log.retention.hours/minutes/ms` 的值便可。
+
+**清理策略**
+
+- **删除（Log Retention）：** `log.cleanup.policy=delete` 表示启用删除策略，这也是默认策略。一开始只是标记为delete，文件无法被索引。只有过了`log.Segment.delete.delay.ms`这个参数设置的时间，才会真正被删除。
+
+  > 对于基于时间的清理策略，Kafka会根据设置的日志保留时间来删除旧的消息；对于基于大小的清理策略，Kafka会根据设置的日志大小来删除过期的消息。
+
+- **压缩（Log Compaction）：** 针对每个消息的key进行整合，对于相同key的不同value值，只保留最后一个版本。
+
+## 36. Kafka 日志存储的Message是什么格式
+
+在Kafka中，日志存储的Message格式是以二进制的方式进行编码的，包含了以下几个部分：
+
+- 消息头（MessageHeader）：存储了消息的元数据，比如消息的key和value类型等信息。
+- 消息体（MessageBody）：即消息的实际内容，可以是任意二进制数据。
+- 消息尾（MessageFooter）：存储了一些元数据信息，比如消息的校验和和消息体的长度等信息。
+
+在Kafka中，采用的是可变长度消息格式（Variable Length Message Format，VLF），即消息的长度是可变的，可以根据消息的实际长度进行动态调整。采用这种格式的好处是可以减少存储空间的浪费，同时提高了消息的传输效率。
+
+## 37. Kafka 是否支持多租户隔离
+
+> 多租户技术（multi-tenancy technology）是一种软件架构技术，它是实现如何在多用户的环境下共用相同的系统或程序组件，并且仍可确保各用户间数据的隔离性。
+
+**解决方案**
+
+通过配置哪个主题可以生产或消费数据来启用多租户，也有对配额的操作支持。管理员可以对请求定义和强制配额，以控制客户端使用的Broker资源。
+
+## 38. Kafka 的日志分段策略与刷新策略
+
+**日志分段（Segment）策略**
+
+1. `log.roll.hours/ms`：日志滚动的周期时间，到达指定周期时间时，强制生成一个新的Segment，默认值168h（7day）。
+2. `log.Segment.bytes`：每个Segment的最大容量。到达指定容量时，将强制生成一个新的Segment。默认值1GB（-1代表不限制）。
+3. `log.retention.check.interval.ms`：日志片段文件检查的周期时间。默认值60000ms。
+
+**日志刷新策略**
+
+Kafka的日志刷新策略分为两种：
+
+1. 定期刷新：Kafka会定期地将内存缓冲区中的数据刷写到磁盘中，这样可以避免数据的长时间滞留在内存缓冲区中，从而减小数据丢失的风险。定期刷新的间隔时间由`log.flush.interval.ms`参数来配置。
+2. 批量刷新：Kafka还支持在内存缓冲区中的消息数量达到一定阈值后，就将缓冲区中的数据批量地刷写到磁盘上。这个阈值可以通过`log.flush.messages`参数来配置。
+
+这两种刷新策略可以单独使用，也可以同时使用。它们的使用与否以及刷新的时间和数量阈值可以通过配置文件进行修改。
+
+## 39.  Kafka 中什么情况下会出现消息丢失/不一致的问题
+
+**消息发送时**
+
+消息发送有两种方式：`同步 - sync` 和 `异步 - async`。默认是同步的方式，可以通过 producer.type 属性进行配置，kafka 也可以通过配置 acks 属性来确认消息的生产
+
+- `0`：表示不进行消息接收是否成功的确认
+- `1`：表示当 leader 接收成功时的确认
+- `-1`：表示 leader 和 follower 都接收成功的确认
+
+当 acks = 0 时，不和 Kafka 进行消息接收确认，可能会因为网络异常，缓冲区满的问题，导致消息丢失
+
+当 acks = 1 时，只有 leader 同步成功而 follower 尚未完成同步，如果 leader 挂了，就会造成数据丢失
+
+**消息消费时**
+
+Kafka 有两个消息消费的 consumer 接口，分别是 `low-level` 和 `hign-level`
+
+1. `low-level`：消费者自己维护 offset 等值，可以实现对 kafka 的完全控制
+2. `high-level`：封装了对 partition 和 offset，使用简单
+
+如果使用高级接口，可能存在一个消费者提取了一个消息后便提交了 offset，那么还没来得及消费就已经挂了，下次消费时的数据就是 offset + 1 的位置，那么原先 offset 的数据就丢失了。
+
+## 40. Kafka 作为流处理平台的特点
+
+> 流处理就是连续、实时、并发和以逐条记录的方式处理数据的意思。Kafka 是一个分布式流处理平台，它的高吞吐量、低延时、高可靠性、容错性、高可扩展性都使得Kafka非常适合作为流式平台。
+
+1. 它是一个简单的、轻量级的Java类库，能够被集成到任何Java应用中
+2. 除了Kafka之外没有任何其他的依赖，利用Kafka的分区模型支持水平扩容和保证顺序性
+3. 支持本地状态容错，可以执行非常快速有效的有状态操作
+4. 支持 eexactly-once 语义
+5. 支持一次处理一条记录，实现 ms 级的延迟
+
+## 41. 消费者故障，出现活锁问题如何解决
+
+**活锁的概念**：消费者持续的维持心跳，但没有进行消息处理。
+
+为了预防消费者在这种情况一直持有分区，通常会**利用 `max.poll.interval.ms`活跃检测机制**，如果调用 Poll 的频率大于最大间隔，那么消费者将会主动离开消费组，以便其他消费者接管该分区
+
