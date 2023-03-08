@@ -38,7 +38,7 @@ INSERT INTO copy(id,name,age) SELECT * FROM user;
 Mysql8.0之前默认字符集是latin1（拉丁），utf8指向的是utf8mb3，如果使用默认编码会造成中文乱码。
 
 ``` mysql
-操作1：查看默认使用的字符集
+# 操作1：查看默认使用的字符集
 show variables like '%character%';
 ```
 
@@ -129,7 +129,7 @@ CREATE USER '[用户名]'@'[hostname]' IDENTIFIED BY '[密码]';
 
 ```mysql
 DROP USER '[用户名]';  # 默认删除host='%'的用户
-DROP USER '[用户名]'@'[hostname]';  
+DROP USER '[用户名]'@'[hostname]';
 ```
 
 方式二：DELETE方式
@@ -624,7 +624,7 @@ mysql中索引按照物理存储可以分为以下两类：聚簇（聚集）索
 
 ###### 2.2.2.2.2.1 聚簇索引
 
-聚簇索引并不是一种单独的索引类型，而是一种数据存储方式，索引和数据存储在一起，都存储在同一个B+tree中的叶子节点。也就是所谓的==索引及数据，数据集索引==。一般主键索引都是聚簇索引，如果没有定义主键，InnoDB会选择一个唯一的非空索引代替，如果没有这样的索引，InnoDB会隐式定义一个主键来作为聚簇索引。一张表只有一个聚簇索引，可以有多个二级索引。
+聚簇索引并不是一种单独的索引类型，而是一种数据存储方式，索引和数据存储在一起，都存储在同一个B+tree中的叶子节点。也就是所谓的==索引即数据，数据即索引==。一般主键索引都是聚簇索引，如果没有定义主键，InnoDB会选择一个唯一的非空索引代替，如果没有这样的索引，InnoDB会隐式定义一个主键来作为聚簇索引。一张表只有一个聚簇索引，可以有多个二级索引。
 
 对于**主键索引不需要显式定义**，当定义主键时，InnoDB就会根据主键建立一颗主键索引树。![](images/b-tree-index-1.jpg)
 
@@ -1548,24 +1548,28 @@ FROM student_info GROUP BY student_id LIMIT 100
 
 1. 当我们对student_id 和create_time 分别创建索引，执行下面的SQL查询：
 
-  ```mysql
+```mysql
 # 创建索引：先创建student_id，在创建create_time
+
 CREATE INDEX idx_sid ON student_info(student_id) 
 CREATE INDEX idx_stime ON student_info(create_time) 
+
 # 先student_id,再create_time
+
 EXPLAIN
 SELECT student_id,COUNT(*) As num FROM student_info
 GROUP BY student_id
 ORDER BY create_time DESC 
 LIMIT 100;
-# 查询时间2130ms
-  ```
 
-  会发现这种情况只用了idx_sid索引，而idx_stime并没有使用。
+
+# 查询时间2130ms
+# 会发现这种情况只用了idx_sid索引，而idx_stime并没有使用。
+```
 
 2. 创建联合索引
 
-  考虑以下几种情况，保留上面创建的两个单列索引idx_sid，idx_stime
+   考虑以下几种情况，保留上面创建的两个单列索引idx_sid，idx_stime
 
   ```mysql
 # 先student_id，再create_time
@@ -1614,7 +1618,7 @@ UPDATE student_info SET student_id = 10002 WHERE NAME='462eed7ac6e791292a79';
 ###### 2.2.4.3.2.5 DISTINCT字段需要创建索引
 
 有时候我们需要对某个字段进行去重，使用DISTINCT，那么对这个字段创建索引，也会提升查询效率。
-比如，我们想要查询课程表中不同的student_id都有哪些，如果我们没有对student_id 创建索引，执行sQL语句:
+比如，我们想要查询课程表中不同的student_id都有哪些，如果我们没有对student_id 创建索引，执行SQL语句:
 
 ```mysql
 SELECT DISTINCT ( student_id) FROM student_info;
@@ -5180,9 +5184,22 @@ https://www.gulixueyuan.com/course/510/task/22390/show#
 
 ##### 2.2.13.6.1 写入机制
 
+binlog的写入时机也非常简单，事务执行过程中，先把日志写到binlog cache，事务提交的时候，再把binlog cache写到binlog文件中。因为一个事务的binlog不能被拆开，无论这个事务多大，也要确保一次性写入，所以系统会给每个线程分配一个块内存作为binlog cache。
+
+![image-20230308194620608](images/image-20230308194620608.png)
+
 ##### 2.2.13.6.2 binlog与redolog对比
 
+1. redo log 是 InnoDB 引擎特有的；binlog 是 MySQL 的 Server 层实现的，所有引擎都可以使用。
+2. redo log 是物理日志，记录的是“在某个数据页上做了什么修改”；binlog 是逻辑日志，记录的是这个语句的原始逻辑，比如“给 ID=2 这一行的 c 字段加 1 ”。
+3. redo log 是循环写的，空间固定会用完；binlog 是可以追加写入的。“追加写”是指 binlog 文件写到一定大小后会切换到下一个，并不会覆盖以前的日志。
+4. 虽然它们都属于持久化的保证，但是则重点不同。
+   1. redo log让InnoDB存储引擎拥有了崩溃恢复能力。
+   2. binlog保证了MySQL集群架构的数据一致性。
+
 ###### 2.2.13.6.3 两阶段提交
+
+![image-20230308195325430](images/image-20230308195325430.png)
 
 ### 2.2.14 日志与备份篇2--主从复制
 
