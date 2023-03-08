@@ -570,7 +570,7 @@ Spring 有两种Bean，一种是普通Bean，一种是工厂Bean（FactoryBean�
    - singleton 和 prototype 区别
      1. singleton 单实例，prototype 多实例
      2. 设置 scope 值是 <font color='red'>singleton</font> 时候，<font color='red'>加载 spring 配置文件时候就会创建单实例对象</font>
-     3. 设置 scope 值是 <font color='red'>prototype</font> 时候，不是在加载 spring 配置文件时候创建 对象，在 <font color='red'>调用 getBean 方法时候创建多实例对象</font>
+     3. 设置 scope 值是 <font color='red'>prototype</font> 时候，不是在加载 spring 配置文件时候创建对象，在 <font color='red'>调用 getBean 方法时候创建多实例对象</font>
 
    ```xml
    <bean id="student" class="com.yuyunhu.demo.entity.Student" scope="prototype">
@@ -1423,13 +1423,17 @@ public class BookProxy {
 </beans>
 ```
 
-# 9 JdbcTemplate—概念和准备
+# 9. 面试题
 
-## 9.2 什么是JdbcTemplate
+
+
+# 10. JdbcTemplate—概念和准备
+
+## 10.1 什么是JdbcTemplate
 
 1. Spring框架对JDBC进行封装，使用JdbcTempLate方便实现对数据库进行操作。
 
-## 9.2 准备工作
+## 10.2 准备工作
 
 1. 引入相关jar包
 
@@ -1480,3 +1484,10 @@ public class BookProxy {
        private BookDao bookDao;
    }
    ```
+
+# 11. Spring事务
+
+## 11.1 Spring事务的传播机制
+
+![](images/事务传播机制.png)
+

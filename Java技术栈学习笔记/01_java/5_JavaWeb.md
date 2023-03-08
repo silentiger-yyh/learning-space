@@ -443,8 +443,162 @@ public class Demo07Servlet extends HttpServlet {
         System.out.println("demo07......");
     }
 }
-
 ```
+
+## 面试题
+
+### 1. 什么是Servlet？
+
+servlet是运行在web服务器中的小型java程序，通常通过HTTP协议接受和相应来自web客户端的请求。
+
+它的特点如下：
+
+（1）Servlet对像，由Servlet容器创建。通常这个容器就是tomcat。
+
+（2）Servlet是一个接口：位于javax.servlet包中。
+
+### 2. 请求过程
+
+1. 客户端发送请求：客户端（如浏览器）发送一个HTTP请求到Servlet容器，请求的URL地址包括了Servlet的名字和路径，例如http://localhost:8080/MyApp/MyServlet。
+2. Servlet容器接收请求：Servlet容器接收到HTTP请求后，根据请求中的URL地址找到对应的Servlet，并创建一个HttpServletRequest对象和HttpServletResponse对象，分别表示请求和响应。
+3. Servlet实例化：如果Servlet容器还没有创建该Servlet的实例，它会实例化该Servlet。在实例化过程中，Servlet容器会调用Servlet的init()方法来完成初始化工作。
+4. Servlet处理请求：一旦Servlet实例化完成，Servlet容器就会调用Servlet的service()方法来处理请求。在service()方法中，Servlet可以根据请求的类型（如GET或POST）执行相应的逻辑处理，并生成一个响应结果。
+5. Servlet生成响应：在service()方法中，Servlet会将处理结果写入HttpServletResponse对象中。例如，Servlet可以向响应中添加HTML页面、图片或其他类型的数据。
+6. 响应发送给客户端：当Servlet完成处理并生成响应后，Servlet容器会将HttpServletResponse对象中的数据发送给客户端，客户端接收到响应后，就可以显示响应的内容。
+7. Servlet销毁：一旦Servlet容器需要销毁Servlet实例时，它会调用Servlet的destroy()方法，在该方法中，Servlet可以执行一些清理工作，如关闭数据库连接等。
+
+### 3. Servlet容器接收到HTTP请求后，如何根据请求中的URL地址找到对应的Servlet
+
+Servlet容器根据以下两种方式来确定Servlet：
+
+1. URL匹配：Servlet容器可以使用URL映射规则来匹配请求中的URL地址，以确定要调用哪个Servlet。例如，可以使用通配符来匹配一组URL地址。可以在web.xml配置文件中使用Servlet映射规则进行配置。
+2. 注解：Servlet 3.0及以上版本支持使用注解来标识Servlet。在Servlet类上添加@WebServlet注解，可以指定Servlet的URL地址。例如，@WebServlet("/MyServlet")表示该Servlet的URL地址为/MyServlet。
+
+### 4. Servlet生命周期
+
+1. 加载和实例化：当Servlet容器启动时，它会查找并加载所有的Servlet类。在Servlet容器第一次收到请求时，它会创建一个Servlet实例并调用其init()方法。
+2. 初始化：在Servlet实例创建后，Servlet容器会调用其init()方法来完成初始化。在init()方法中，Servlet可以进行一些初始化工作，如获取Servlet配置参数，建立数据库连接等。
+3. 服务：在初始化完成后，Servlet容器会将请求传递给Servlet的service()方法来处理。在service()方法中，Servlet可以根据请求的类型执行相应的处理逻辑。
+4. 销毁：当Servlet容器需要销毁一个Servlet实例时，它会调用其destroy()方法。在destroy()方法中，Servlet可以执行一些清理工作，如关闭数据库连接等。
+
+### 5. GenericServlet和HttpServlet有什么区别？
+
+1. GenericServlet
+
+   GenericServlet是一个抽象类，它实现了Servlet接口中的所有方法，同时提供了一些基本的Servlet功能，如初始化和销毁。由于它是一个通用的Servlet组件，因此它可以用于处理各种类型的请求，包括HTTP请求和非HTTP请求。通常情况下，如果我们需要实现一个自定义的Servlet组件，可以继承GenericServlet类来实现。
+
+2. HttpServlet
+
+   HttpServlet是GenericServlet的子类，它提供了一些额外的方法和功能，使得它更适合用于处理HTTP请求。HttpServlet包含了doGet、doPost、doPut、doDelete等一系列处理HTTP请求的方法，可以方便地处理各种类型的HTTP请求。除此之外，HttpServlet还提供了一些其他的功能，如对cookie和session的支持，以及对HTTP头信息的访问。
+
+### 6. 什么情况下调用doGet()和doPost()呢？
+
+也就是在前端代码中，如果我们的请求方式是get那就是doGet处理。同理post是doPost方法处理。
+
+（1）doGet：GET方法会把名值对追加在请求的URL后面。因为URL对字符数目有限制，进而限制了用在客户端请求的参数值的数目。并且请求中的参数值是可见的，因此，敏感信息不能用这种方式传递。
+
+（2）doPOST：POST方法通过把请求参数值放在请求体中来克服GET方法的限制，因此，可以发送的参数的数目是没有限制的。最后，通过POST请求传递的敏感信息对外部客户端是不可见的。
+
+### 7. 四种会话跟踪技术
+
+- 基于Cookie的会话跟踪技术
+
+  基于Cookie的会话跟踪技术是最常见的一种会话跟踪技术，它的原理是在客户端使用Cookie保存一个Session ID，每次请求时将Session ID发送给服务器端，服务器端通过Session ID识别出对应的会话信息。优点是实现简单、可跨域使用，缺点是Cookie有大小限制和安全风险
+
+- 基于URL重写的会话跟踪技术
+
+  基于URL重写的会话跟踪技术是将Session ID作为URL参数附加到每个请求的URL上，服务器端通过解析URL参数识别出对应的会话信息。优点是实现简单、可跨域使用，缺点是会破坏原有的URL结构。
+
+- 基于隐藏表单域的会话跟踪技术
+
+  基于隐藏表单域的会话跟踪技术是将Session ID作为一个隐藏表单域附加到每个请求的表单中，服务器端通过解析表单中的隐藏域识别出对应的会话信息。优点是实现简单、安全性较好，缺点是会破坏原有的表单结构。
+
+- 基于Session对象的会话跟踪技术
+
+  通常和Cookie配合使用。
+
+### 8. 会话作用域
+
+会话作用域是通过Session对象来实现的。在Java Servlet API中，Session对象提供了以下几种作用域：
+
+- Application作用域
+
+  Application作用域是指将数据保存在整个Web应用程序的生命周期中，所有的客户端请求都可以访问和共享这些数据。通常情况下，将数据保存在ServletContext对象中来实现Application作用域。
+
+- Session作用域
+
+  Session作用域是指将数据保存在一次会话的整个过程中，同一个客户端在一次会话中的所有请求和响应都可以访问和共享这些数据。通常情况下，将数据保存在Session对象中来实现Session作用域。
+
+- Request作用域
+
+  Request作用域是指将数据保存在一次HTTP请求和响应的过程中，同一个请求中的所有Servlet和JSP页面都可以访问和共享这些数据。通常情况下，将数据保存在HttpServletRequest对象中来实现Request作用域。
+
+- Page作用域
+
+  Page作用域是指将数据保存在一个JSP页面的执行过程中，同一个JSP页面中的所有Java代码和表达式都可以访问和共享这些数据。通常情况下，将数据保存在PageContext对象中来实现Page作用域。
+
+### 9. Cookie和Session有什么区别
+
+- 存储位置：Cookie是存储在客户端的，Session是存储在服务器端的。
+- 数据安全性：由于Cookie是存储在客户端的，所以它们的数据可能会被客户端篡改或窃取；而Session是存储在服务器端的，所以它们的数据相对较为安全。
+- 存储容量：Cookie的存储容量比Session小，一般只能存储4KB左右的数据；而Session的存储容量比Cookie大，一般可以存储数MB的数据。
+- 过期时间：Cookie可以设置过期时间，可以长期有效（如果没有设置过期时间，则该Cookie会一直存在，直到客户端关闭浏览器或手动清除Cookie）；而Session的有效时间默认是30分钟，可以通过设置改变，一般适用于短期的数据共享（如果客户端关闭浏览器，则Session对象也会自动销毁）。
+
+### 10. 如何知道是哪一个客户端的机器正在请求你的Servlet
+
+ServletRequest类可以找出客户端机器的IP地址或者是主机名。getRemoteAddr()方法获取客户端主机的IP地址，getRemoteHost()可以获取主机名。
+
+### 11. 在Servlet中，forward和redirect都可以用于页面的跳转，它们的主要区别如下：
+
+1. forward是服务器内部的跳转，而redirect是客户端的跳转。
+
+   - forward是在服务器端进行页面跳转，浏览器并不知道页面的变化，因此URL地址不会改变。
+
+   - redirect是在客户端进行页面跳转，服务器会发送一个HTTP响应给客户端，客户端会重新发送一个HTTP请求到服务器，因此URL地址会发生变化。
+
+2. forward是一次请求，而redirect是两次请求。
+
+   - forward是将请求转发给另一个页面进行处理，处理完毕后将结果返回给客户端，整个过程只涉及一次HTTP请求。
+
+   - redirect是将请求发送给服务器，服务器返回一个HTTP响应给客户端，客户端再发送一个HTTP请求到服务器，整个过程涉及两次HTTP请求。
+
+3. forward可以共享request域中的数据，而redirect不能。
+
+   - forward是在同一个请求中进行的页面跳转，因此可以共享request域中的数据。
+
+   - redirect是两个独立的请求，因此不能共享request域中的数据。
+
+### 12. HTTP协议中，GET和POST的主要区别如下：
+
+1. 请求参数位置不同。
+
+   - GET方法将请求参数附加在URL后面，即查询字符串中，形如“http://www.example.com/login?username=admin&password=123456”。
+
+   - POST方法将请求参数包含在请求体中，请求体可以是JSON、XML、文本等形式。
+
+2. 请求参数大小限制不同。
+
+   - GET方法传输的参数大小有限制，不同浏览器有不同的限制，一般为2KB-8KB。
+
+   - POST方法传输的参数大小理论上没有限制，但是实际上会受到服务器的限制。
+
+3. 安全性不同。
+
+   - GET方法的请求参数暴露在URL中，容易被拦截和篡改，因此不适合传输敏感信息。
+
+   - POST方法的请求参数在请求体中，相对于GET方法更加安全，适合传输敏感信息。
+
+4. 缓存策略不同。
+
+   - GET方法会被浏览器缓存，下次请求相同的URL时会直接使用缓存数据。
+
+   - POST方法不会被浏览器缓存，每次请求都需要向服务器发送请求。
+
+5. 应用场景不同。
+
+   - GET方法适用于请求数据，如获取网页、图片等。
+
+   - POST方法适用于提交数据，如登录、注册等。
 
 # 3 Thymeleaf
 
