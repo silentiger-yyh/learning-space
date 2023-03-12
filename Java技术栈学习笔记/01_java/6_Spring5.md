@@ -1423,10 +1423,6 @@ public class BookProxy {
 </beans>
 ```
 
-# 9. 面试题
-
-
-
 # 10. JdbcTemplate—概念和准备
 
 ## 10.1 什么是JdbcTemplate
