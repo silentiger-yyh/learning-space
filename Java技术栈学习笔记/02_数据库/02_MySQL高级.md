@@ -2710,14 +2710,14 @@ WHERE c.monitor IS NULL;
 
 ##### 2.2.6.5.1 排序优化
 
-问题：在WHERE条件字段上加索引，但是为什么在ORDER BY字段上还要加索引|呢?
+问题：在WHERE条件字段上加索引，但是为什么在ORDER BY字段上还要加索引呢?
 
 回答：
 
 在MySQL中,支持两种排序方式，分别是FileSort和Index排序。
 
 * Index 排序中，索引可以保证数据的有序性，不需要再进行排序，效率更高。
-* FileSort 排序则一般在内存中进行排序，占用CPU较多。如果待排结果较大，会产生临时文件1/0到磁盘进行排序的情况，效率较低。
+* FileSort排序则一般在内存中进行排序，占用CPU较多。如果待排结果较大，会产生临时文件I/O到磁盘进行排序的情况，效率较低。
 
 优化建议：
 
@@ -2771,12 +2771,12 @@ order by能使用索引最左前缀
 - ORDER BY a, b
 - ORDER BY a, b, c
 - ORDER BY a DESC, b DESC, c DESC
-如果WHERE使用索引的最左前缀定义为常量，则order by 能使用索引
+# 如果WHERE使用索引的最左前缀定义为常量，则order by 能使用索引
 - WHERE a = const ORDER BY b, c
 - WHERE a = const AND b = const ORDER BY c
 - WHERE a = const ORDER BY b,己
 - WHERE a = const AND b > const ORDER BY b , c
-不能使用索引进行排序
+# 不能使用索引进行排序
 - ORDER BY a ASC , b DESC , c DESC /*排序不一致*/
 - WHERE g = const ORDER BY b,c /*丢失a索引*/
 - WHERE a = const ORDER BY c /*丢失b索引*/
